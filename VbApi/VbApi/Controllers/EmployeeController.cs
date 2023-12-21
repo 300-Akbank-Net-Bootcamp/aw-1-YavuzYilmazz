@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 
 namespace VbApi.Controllers;
 
@@ -57,6 +59,41 @@ public class MinLegalSalaryRequiredAttribute : ValidationAttribute
     }
 }
 
+public class EmployeeValidator : AbstractValidator<Employee>
+    {
+        public EmployeeValidator()
+        {
+            RuleFor(employee => employee.Name)
+                .NotEmpty().WithMessage("Name is required.")
+                .Length(10, 250).WithMessage("Name must be between 10 and 250 characters.");
+
+            RuleFor(employee => employee.DateOfBirth)
+                .Must(BeValidDateOfBirth).WithMessage("Birthdate is not valid.")
+                .Must(BeGreaterThan21YearsAgo).WithMessage("Age must be greater than 21.");
+
+            RuleFor(employee => employee.Email)
+                .NotEmpty().WithMessage("Email is required.")
+                .EmailAddress().WithMessage("Email address is not valid.");
+
+            RuleFor(employee => employee.Phone)
+                .NotEmpty().WithMessage("Phone is required.")
+                .Matches(@"^\d{11}$").WithMessage("Phone must be an 11-digit number.");
+        }
+
+        private bool BeValidDateOfBirth(DateTime dateOfBirth)
+        {
+            return dateOfBirth.Date <= DateTime.Today;
+        }
+
+        private bool BeGreaterThan21YearsAgo(DateTime dateOfBirth)
+        {
+            var today = DateTime.Today;
+            var age = today.Year - dateOfBirth.Year - ((today.Month > dateOfBirth.Month || (today.Month == dateOfBirth.Month && today.Day >= dateOfBirth.Day)) ? 0 : 1);
+            return age > 21;
+        }
+    }
+
+
 [Route("api/[controller]")]
 [ApiController]
 public class EmployeeController : ControllerBase
@@ -68,10 +105,6 @@ public class EmployeeController : ControllerBase
     [HttpPost]
     public Employee Post([FromBody] Employee value)
     {
-        if (value.DateOfBirth > DateTime.Now.AddYears(-30) && value.HourlySalary < 200)
-        {
-            
-        }
         return value;
     }
 }
